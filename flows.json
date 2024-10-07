@@ -1,0 +1,532 @@
+[
+  {
+    "id": "f6f2187d.f17ca8",
+    "type": "tab",
+    "label": "Fake Meter Generator",
+    "disabled": false,
+    "info": ""
+  },
+  {
+    "id": "896ce0758a2428b3",
+    "type": "inject",
+    "z": "f6f2187d.f17ca8",
+    "d": true,
+    "name": "Inject",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "1",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 140,
+    "y": 360,
+    "wires": [
+      [
+        "d9907c4f1679ffab"
+      ]
+    ]
+  },
+  {
+    "id": "779f8f51f2df0254",
+    "type": "function",
+    "z": "f6f2187d.f17ca8",
+    "name": "Random Data Maker",
+    "func": "var places = [\"Factory A\",\"Factory B\",\"Factory C\", \"Factory D\", \"Building A\", \"Building B\", \"Building C\", \"Building D\", \"Warehouse A\", \"Warehouse B\", \"Warehouse C\", \"Warehouse D\", \"Office A\", \"Office B\", \"Office C\", \"Office D\"];\nvar types = [\"Electrical\", \"Gas\", \"Water\", \"Solar\"];\n\nvar randomPlace = places[Math.floor(Math.random() * places.length)];\nvar randomType = types[Math.floor(Math.random() * types.length)];\nvar randomConsumption = Math.floor(Math.random() * 1000000);\n\nmsg.params = [randomPlace, randomType, randomConsumption];\n\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 500,
+    "y": 160,
+    "wires": [
+      [
+        "a2a8ad1e8c3a1633"
+      ]
+    ]
+  },
+  {
+    "id": "a2a8ad1e8c3a1633",
+    "type": "postgresql",
+    "z": "f6f2187d.f17ca8",
+    "name": "Insert",
+    "query": "INSERT INTO energy_meter (energy_place, energy_type, energy_consumption, created_at)\nVALUES ($1, $2, $3, CURRENT_TIMESTAMP);\n",
+    "postgreSQLConfig": "",
+    "split": false,
+    "rowsPerMsg": 1,
+    "outputs": 1,
+    "x": 690,
+    "y": 160,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "d9907c4f1679ffab",
+    "type": "postgresql",
+    "z": "f6f2187d.f17ca8",
+    "name": "Data",
+    "query": "SELECT \n    energy_place,\n    created_at,\n    energy_type,\n    energy_consumption\nFROM \n    energy_meter\nORDER BY \n    created_at, energy_type;\n",
+    "postgreSQLConfig": "",
+    "split": false,
+    "rowsPerMsg": 1,
+    "outputs": 1,
+    "x": 450,
+    "y": 360,
+    "wires": [
+      [
+        "a44f1666531b706a"
+      ]
+    ]
+  },
+  {
+    "id": "432f3c8f97bcf99e",
+    "type": "inject",
+    "z": "f6f2187d.f17ca8",
+    "d": true,
+    "name": "inject",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "0.5",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 150,
+    "y": 160,
+    "wires": [
+      [
+        "779f8f51f2df0254",
+        "5bcefcec9c3f115a"
+      ]
+    ]
+  },
+  {
+    "id": "5bcefcec9c3f115a",
+    "type": "postgresql",
+    "z": "f6f2187d.f17ca8",
+    "name": "Delete ",
+    "query": "DELETE FROM energy_meter\nWHERE created_at < NOW() - INTERVAL '1 minutes';\n",
+    "postgreSQLConfig": "",
+    "split": false,
+    "rowsPerMsg": 1,
+    "outputs": 1,
+    "x": 690,
+    "y": 120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "a44f1666531b706a",
+    "type": "function",
+    "z": "f6f2187d.f17ca8",
+    "name": "Formatter",
+    "func": "let datas = msg.payload;\n\nlet payload = [];\n\ndatas.forEach(item => {\n    let timestamp = new Date(item.created_at).getTime();\n    \n    payload.push({\n        series: item.energy_type,\n        x: timestamp,\n        y: item.energy_consumption\n    });\n});\n\nmsg.payload = payload;\n\nreturn msg;\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 700,
+    "y": 360,
+    "wires": [
+      [
+        "e6bd53494d83cf71",
+        "75e76f9af7df4a2d",
+        "bcf4630edfd8a538",
+        "d357c261677922d3",
+        "d33c35107cd3ca82"
+      ]
+    ]
+  },
+  {
+    "id": "e6bd53494d83cf71",
+    "type": "ui-chart",
+    "z": "f6f2187d.f17ca8",
+    "group": "b45c0ec8b0b49905",
+    "name": "",
+    "label": "Line Chart",
+    "order": 2,
+    "chartType": "line",
+    "category": "series",
+    "categoryType": "property",
+    "xAxisLabel": "",
+    "xAxisProperty": "x",
+    "xAxisPropertyType": "property",
+    "xAxisType": "time",
+    "xAxisFormat": "",
+    "xAxisFormatType": "auto",
+    "yAxisLabel": "",
+    "yAxisProperty": "y",
+    "ymin": "1",
+    "ymax": "1000000",
+    "action": "replace",
+    "stackSeries": false,
+    "pointShape": "rect",
+    "pointRadius": 4,
+    "showLegend": false,
+    "removeOlder": "1",
+    "removeOlderUnit": "60",
+    "removeOlderPoints": "",
+    "colors": [
+      "#0095ff",
+      "#ff0000",
+      "#ff7f0e",
+      "#2ca02c",
+      "#a347e1",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "textColor": [
+      "#666666"
+    ],
+    "textColorDefault": true,
+    "gridColor": [
+      "#e5e5e5"
+    ],
+    "gridColorDefault": true,
+    "width": 6,
+    "height": 8,
+    "className": "",
+    "x": 1130,
+    "y": 300,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "75e76f9af7df4a2d",
+    "type": "ui-chart",
+    "z": "f6f2187d.f17ca8",
+    "group": "b45c0ec8b0b49905",
+    "name": "",
+    "label": "Bar Chart",
+    "order": 1,
+    "chartType": "bar",
+    "category": "series",
+    "categoryType": "property",
+    "xAxisLabel": "",
+    "xAxisProperty": "x",
+    "xAxisPropertyType": "property",
+    "xAxisType": "category",
+    "xAxisFormat": "",
+    "xAxisFormatType": "auto",
+    "yAxisLabel": "",
+    "yAxisProperty": "y",
+    "ymin": "1",
+    "ymax": "1000000",
+    "action": "replace",
+    "stackSeries": false,
+    "pointShape": "dash",
+    "pointRadius": 4,
+    "showLegend": false,
+    "removeOlder": "1",
+    "removeOlderUnit": "60",
+    "removeOlderPoints": "",
+    "colors": [
+      "#0095ff",
+      "#ff0000",
+      "#ff7f0e",
+      "#2ca02c",
+      "#a347e1",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "textColor": [
+      "#666666"
+    ],
+    "textColorDefault": true,
+    "gridColor": [
+      "#e5e5e5"
+    ],
+    "gridColorDefault": true,
+    "width": 6,
+    "height": 8,
+    "className": "",
+    "x": 1120,
+    "y": 460,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "bcf4630edfd8a538",
+    "type": "ui-chart",
+    "z": "f6f2187d.f17ca8",
+    "group": "b45c0ec8b0b49905",
+    "name": "",
+    "label": "Pie Chart",
+    "order": 5,
+    "chartType": "pie",
+    "category": "series",
+    "categoryType": "property",
+    "xAxisLabel": "",
+    "xAxisProperty": "x",
+    "xAxisPropertyType": "property",
+    "xAxisType": "radial",
+    "xAxisFormat": "",
+    "xAxisFormatType": "auto",
+    "yAxisLabel": "",
+    "yAxisProperty": "y",
+    "ymin": "1",
+    "ymax": "1000000",
+    "action": "replace",
+    "stackSeries": false,
+    "pointShape": "dash",
+    "pointRadius": 4,
+    "showLegend": false,
+    "removeOlder": "1",
+    "removeOlderUnit": "60",
+    "removeOlderPoints": "",
+    "colors": [
+      "#0095ff",
+      "#ff0000",
+      "#ff7f0e",
+      "#2ca02c",
+      "#a347e1",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "textColor": [
+      "#666666"
+    ],
+    "textColorDefault": true,
+    "gridColor": [
+      "#e5e5e5"
+    ],
+    "gridColorDefault": true,
+    "width": "12",
+    "height": 8,
+    "className": "",
+    "x": 1120,
+    "y": 260,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "d33c35107cd3ca82",
+    "type": "ui-chart",
+    "z": "f6f2187d.f17ca8",
+    "group": "b45c0ec8b0b49905",
+    "name": "",
+    "label": "Scatter Chart",
+    "order": 4,
+    "chartType": "scatter",
+    "category": "series",
+    "categoryType": "property",
+    "xAxisLabel": "",
+    "xAxisProperty": "x",
+    "xAxisPropertyType": "property",
+    "xAxisType": "time",
+    "xAxisFormat": "",
+    "xAxisFormatType": "auto",
+    "yAxisLabel": "",
+    "yAxisProperty": "y",
+    "ymin": "1",
+    "ymax": "1000000",
+    "action": "replace",
+    "stackSeries": false,
+    "pointShape": "circle",
+    "pointRadius": 4,
+    "showLegend": false,
+    "removeOlder": "1",
+    "removeOlderUnit": "60",
+    "removeOlderPoints": "",
+    "colors": [
+      "#0095ff",
+      "#ff0000",
+      "#ff7f0e",
+      "#2ca02c",
+      "#a347e1",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "textColor": [
+      "#666666"
+    ],
+    "textColorDefault": true,
+    "gridColor": [
+      "#e5e5e5"
+    ],
+    "gridColorDefault": true,
+    "width": 6,
+    "height": 8,
+    "className": "",
+    "x": 1130,
+    "y": 420,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "d357c261677922d3",
+    "type": "ui-chart",
+    "z": "f6f2187d.f17ca8",
+    "group": "b45c0ec8b0b49905",
+    "name": "",
+    "label": "Doughnut Chart",
+    "order": 3,
+    "chartType": "doughnut",
+    "category": "series",
+    "categoryType": "property",
+    "xAxisLabel": "",
+    "xAxisProperty": "x",
+    "xAxisPropertyType": "property",
+    "xAxisType": "radial",
+    "xAxisFormat": "",
+    "xAxisFormatType": "auto",
+    "yAxisLabel": "",
+    "yAxisProperty": "y",
+    "ymin": "1",
+    "ymax": "1000000",
+    "action": "replace",
+    "stackSeries": false,
+    "pointShape": "dash",
+    "pointRadius": 4,
+    "showLegend": false,
+    "removeOlder": "1",
+    "removeOlderUnit": "60",
+    "removeOlderPoints": "",
+    "colors": [
+      "#0095ff",
+      "#ff0000",
+      "#ff7f0e",
+      "#2ca02c",
+      "#a347e1",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "textColor": [
+      "#666666"
+    ],
+    "textColorDefault": true,
+    "gridColor": [
+      "#e5e5e5"
+    ],
+    "gridColorDefault": true,
+    "width": 6,
+    "height": 8,
+    "className": "",
+    "x": 1140,
+    "y": 360,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "b45c0ec8b0b49905",
+    "type": "ui-group",
+    "name": "Chart Group",
+    "page": "fe89f5ab1630d894",
+    "width": "12",
+    "height": "1",
+    "order": 1,
+    "showTitle": true,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "fe89f5ab1630d894",
+    "type": "ui-page",
+    "name": "Energy Meter",
+    "ui": "b6d07fc2ba23878d",
+    "path": "/page1",
+    "icon": "home",
+    "layout": "grid",
+    "theme": "f9fd6f55b2f95250",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": "0",
+        "cols": "3"
+      },
+      {
+        "name": "Tablet",
+        "px": "576",
+        "cols": "6"
+      },
+      {
+        "name": "Small Desktop",
+        "px": "768",
+        "cols": "9"
+      },
+      {
+        "name": "Desktop",
+        "px": "1024",
+        "cols": "12"
+      }
+    ],
+    "order": 1,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "b6d07fc2ba23878d",
+    "type": "ui-base",
+    "name": "Dashboard",
+    "path": "/dashboard",
+    "includeClientData": true,
+    "acceptsClientConfig": [
+      "ui-notification",
+      "ui-control"
+    ],
+    "showPathInSidebar": false,
+    "showPageTitle": true,
+    "navigationStyle": "default",
+    "titleBarStyle": "default"
+  },
+  {
+    "id": "f9fd6f55b2f95250",
+    "type": "ui-theme",
+    "name": "Dark Theme",
+    "colors": {
+      "surface": "#ffffff",
+      "primary": "#000000",
+      "bgPage": "#000000",
+      "groupBg": "#ffffff",
+      "groupOutline": "#cccccc"
+    },
+    "sizes": {
+      "density": "default",
+      "pagePadding": "12px",
+      "groupGap": "12px",
+      "groupBorderRadius": "4px",
+      "widgetGap": "12px"
+    }
+  }
+]
