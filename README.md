@@ -1,5 +1,5 @@
 
-# Node-Red Fake Energy Consumption Meter
+# Node-Red Random Energy Consumption Meter
 
 This project is an example for beginners who want to work with charts and PostgreSQL on Node-RED.
 
